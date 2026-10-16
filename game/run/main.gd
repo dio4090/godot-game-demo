@@ -18,6 +18,7 @@ var _tokens: Tokens
 
 var _home: HomeScreen
 var _roster: RosterScreen
+var _battle: BattleScreen
 
 
 func _ready() -> void:
@@ -36,12 +37,24 @@ func _ready() -> void:
 	_home.setup(_tokens)
 	add_child(_home)
 	_home.roster_requested.connect(_show_roster)
+	_home.battle_requested.connect(_show_battle)
 
 	_roster = RosterScreen.new()
 	_roster.name = "Roster"
 	_roster.setup(_tokens, _tables)
 	add_child(_roster)
 	_roster.left.connect(_show_home)
+
+	_battle = BattleScreen.new()
+	_battle.name = "Battle"
+	_battle.setup(_tokens, _tables)
+	add_child(_battle)
+	_battle.left.connect(_show_home)
+	# O QUE ACONTECE DEPOIS DE UMA VITORIA E DECISAO DAQUI, nao da tela de batalha. Hoje e so
+	# uma linha no console; amanha e recompensa, save e proxima fase -- e o lugar onde isso vai
+	# ser escrito ja existe, que e metade do trabalho.
+	_battle.ended.connect(func(hero_won: bool) -> void:
+		print("batalha terminada: ", "vitoria" if hero_won else "derrota"))
 
 	_show_home()
 
@@ -60,3 +73,10 @@ func _show_home() -> void:
 
 func _show_roster() -> void:
 	_show(_roster)
+
+
+## A batalha e RECOMECADA a cada entrada. Uma tela que guardasse a anterior mostraria o
+## resultado velho por um quadro, e o jogador veria o cadaver antes da luta.
+func _show_battle() -> void:
+	_show(_battle)
+	_battle.start()

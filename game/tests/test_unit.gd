@@ -11,8 +11,17 @@ func before_each() -> void:
 
 func test_every_row_becomes_a_unit() -> void:
 	var units := Unit.all(_tables)
-	assert_eq(units.size(), 3, "tres linhas na tabela, tres unidades")
+	# Contado contra a TABELA e nao contra um numero escrito aqui: acrescentar uma unidade no
+	# CSV nao pode quebrar um teste que nao e sobre quantas unidades existem.
+	assert_eq(units.size(), _tables.rows("01-units.csv").size(), "uma unidade por linha")
 	assert_eq(units[0].id, "knight", "a ordem do arquivo e preservada")
+
+
+func test_each_side_has_somebody() -> void:
+	# A batalha de exemplo precisa dos dois lados. Sem esta guarda, apagar a unica linha
+	# `enemy` do CSV passaria nos portoes e so quebraria ao abrir a tela de batalha.
+	assert_not_null(Unit.first_of_side(_tables, "hero"), "ha pelo menos um heroi")
+	assert_not_null(Unit.first_of_side(_tables, "enemy"), "e pelo menos um inimigo")
 
 
 func test_seconds_to_kill() -> void:

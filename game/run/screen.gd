@@ -30,6 +30,8 @@ var tokens: Tokens
 var _title: Label
 var _subtitle: Label
 var _back: Button
+var _backdrop: TextureRect
+var _veil: ColorRect
 
 
 ## Monta o cromo. A subclasse chama isto PRIMEIRO no seu proprio `setup` e so depois acrescenta
@@ -64,6 +66,42 @@ func dress(with_tokens: Tokens, title: String, with_back: bool = true) -> void:
 	_back.custom_minimum_size = Vector2(160, Tokens.TOUCH)
 	_back.pressed.connect(func() -> void: left.emit())
 	add_child(_back)
+
+
+## Troca o chao de cor chapada por uma imagem. Opcional: uma tela que nao chamar isto fica com
+## o `bg_deep` de sempre, e nada mais muda.
+##
+## O VEU NAO E ENFEITE. Texto claro sobre uma ilustracao cheia de forma clara perde contraste
+## em pedacos imprevisiveis da tela -- some num cogumelo e reaparece numa sombra. Uma camada de
+## `ink` por cima da imagem derruba o fundo inteiro alguns passos e devolve a leitura, sem
+## precisar de contorno em cada rotulo.
+##
+## STRETCH_KEEP_ASPECT_COVERED porque a janela deste projeto pode ser redimensionada: a imagem
+## cobre a tela e perde o excesso num eixo, em vez de esticar e deformar o desenho.
+func set_backdrop(path: String, veil: float = 0.45) -> void:
+	if not ResourceLoader.exists(path):
+		push_error("backdrop: nao existe %s" % [path])
+		return
+	_backdrop = TextureRect.new()
+	_backdrop.name = "Backdrop"
+	_backdrop.texture = load(path)
+	_backdrop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_backdrop.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_backdrop)
+
+	_veil = ColorRect.new()
+	_veil.name = "Veil"
+	_veil.color = Color(tokens.color("ink"), veil)
+	_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_veil)
+
+	# ATRAS DE TUDO, e por isso os dois sao movidos para o comeco da lista: `dress` ja criou o
+	# titulo e o botao, e um filho acrescentado depois desenha POR CIMA deles. A ordem dos
+	# irmaos e a ordem do desenho, e e so isso que decide o que cobre o que.
+	move_child(_backdrop, 0)
+	move_child(_veil, 1)
+	_place()
 
 
 func set_subtitle(text: String) -> void:
@@ -104,6 +142,11 @@ func _place() -> void:
 	_title.size = Vector2(size.x - Tokens.PAD * 2.0, TITLE_ROW)
 	_subtitle.position = Vector2(Tokens.PAD, Tokens.PAD + TITLE_ROW)
 	_subtitle.size = Vector2(size.x - Tokens.PAD * 2.0, SUBTITLE_ROW)
+	if _backdrop != null:
+		_backdrop.position = Vector2.ZERO
+		_backdrop.size = size
+		_veil.position = Vector2.ZERO
+		_veil.size = size
 	_back.position = Vector2(Tokens.PAD, size.y - Tokens.PAD - Tokens.TOUCH)
 	_back.size = Vector2(160, Tokens.TOUCH)
 	_place_body()

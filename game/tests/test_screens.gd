@@ -28,7 +28,8 @@ func test_the_roster_shows_one_row_per_unit() -> void:
 	screen.setup(_tokens, _tables)
 	var rows := screen.get_node("Rows") if screen.has_node("Rows") else null
 	assert_not_null(rows, "a lista existe")
-	assert_eq(rows.get_child_count(), 3, "uma linha por unidade da tabela")
+	assert_eq(rows.get_child_count(), _tables.rows("01-units.csv").size(),
+		"uma linha por unidade da tabela")
 
 
 func test_a_screen_asks_to_leave_and_does_not_navigate() -> void:

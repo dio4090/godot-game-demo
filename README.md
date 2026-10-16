@@ -1,8 +1,10 @@
 # Godot Starter
 
-Um esqueleto de projeto Godot 4.7 que **roda** e já carrega uma arquitetura inteira em cerca de
-mil linhas. Não é um jogo: são duas telas e três unidades numa tabela. O que ele ensina é a
-**forma** — onde cada coisa mora, e por quê.
+Uma demo enxuta da arquitetura que usamos no nosso jogo, em Godot 4.7. Ela **roda**: três telas,
+uma batalha que começa e termina, e os números numa planilha. São cerca de mil linhas, e o que
+elas ensinam é a **forma** — onde cada coisa mora, e por quê.
+
+A arte é a do nosso projeto, recortada para caber aqui.
 
 ```
 make run      # abre o jogo
@@ -27,8 +29,8 @@ não deixa ninguém atravessar por fora:
   DataTables          abre o arquivo, devolve valor TIPADO
       |               ... e é o único que abre arquivo
       v
-  systems/            a regra: Unit, combate, economia. Sem cena, sem desenho.
-      |               ... por isso a suíte roda sem abrir janela
+  systems/            a regra: Unit, Battle, e o que mais vier. Sem cena, sem desenho.
+      |               ... por isso a suíte simula a batalha inteira sem abrir janela
       v
   run/                a tela: desenha o que a regra decidiu
       |               ... e emite um sinal quando o jogador pede algo
@@ -45,6 +47,7 @@ Mude o `attack` do Archer no CSV e rode `make run` — nenhuma linha de código 
 | entender a ideia | [As quatro regras](#as-quatro-regras) |
 | achar um arquivo | [O mapa](#o-mapa) |
 | saber o que `make check` faz | [Os três portões](#os-três-portões) |
+| ver a regra e a tela separadas na prática | [A batalha](#a-batalha) |
 | mexer no projeto | [Como fazer as coisas](#como-fazer-as-coisas) |
 | crescer sem quebrar a forma | [O que foi deixado de fora](#o-que-foi-deixado-de-fora-de-propósito) |
 
@@ -104,11 +107,14 @@ game/
     data/             o carregador tipado e o leitor do schema
     ui/               tokens (cor e medida) e chrome (como um controle se parece)
     roster/           exemplo de regra: Unit, construída de uma linha da tabela
+    combat/           a batalha inteira: quem bate, quanto tira, quando acaba
   run/                TELAS — tudo que o jogador vê
     main.tscn/.gd     o roteador, e o único lugar que liga e desliga tela
     screen.gd         a forma que toda tela compartilha: chão, cabeçalho, saída
     home_screen.gd    exemplo de tela que só oferece destinos
     roster_screen.gd  exemplo de tela que lê dados
+    battle_screen.gd  exemplo de tela que mostra uma regra rodando
+  art/                as folhas de sprite e o cenário
   dev/                ferramenta de linha de comando, fora do build do jogador
   tests/              a suíte GUT
   addons/gut/         o framework de teste (vendorizado)
@@ -137,6 +143,33 @@ projeto de onde isto saiu:
   aprovação. Portão que falha em silêncio é o próprio defeito que ele existe para pegar.
 - **`run_tests.sh` compara contagens.** O GUT **pula** um arquivo de teste que não compila e mesmo
   assim imprime "All tests passed". Um verde que verificou menos do que afirma é pior que vermelho.
+
+---
+
+## A batalha
+
+É o pedaço que mostra as quatro regras funcionando juntas, e vale abrir os dois arquivos lado a
+lado:
+
+- **`systems/combat/battle.gd`** tem a batalha inteira — intervalo entre golpes, dano, empate,
+  fim — e não sabe que existe uma tela. É um `RefCounted`: sem nó de cena, sem `_process`, sem
+  desenho.
+- **`run/battle_screen.gd`** chama `advance(delta)`, lê `hero_fraction()` e desenha. Não há um
+  número de dano nem uma condição de vitória nesse arquivo.
+
+O que essa divisão compra, em concreto: `tests/test_battle.gd` simula a luta do começo ao fim,
+várias vezes, em milissegundos e sem abrir janela. Um deles verifica até o **conteúdo** — se
+alguém triplicar a vida do inimigo no CSV, o teste falha dizendo que a batalha de exemplo deixou
+de caber numa demonstração.
+
+Detalhes do combate que estão comentados no código, cada um porque é uma decisão e não um acaso:
+o primeiro golpe não sai no instante zero; os dois golpes do mesmo passo acontecem mesmo que o
+primeiro mate (senão o vencedor dependeria da ordem das linhas do arquivo); um passo grande é
+limitado, senão a batalha acelera justo quando o jogo engasga; e quem não ataca tem intervalo
+infinito em vez de uma divisão por zero.
+
+Quando a luta acaba, a tela emite `ended` e **para**. Quem decide o que vem depois — recompensa,
+save, próxima fase — é `run/main.gd`, onde hoje há só um `print`.
 
 ---
 
@@ -190,12 +223,15 @@ percebe sozinha que ele existe.
 
 ## O que foi deixado de fora de propósito
 
-Este esqueleto **não** tem: save em disco, áudio, combate, export de Android, servidor,
-localização, cena de loading. Todos cabem na forma acima sem quebrá-la:
+Este esqueleto **não** tem: save em disco, áudio, grupos de mais de um lutador, export de
+Android, servidor, localização, cena de loading. Todos cabem na forma acima sem quebrá-la:
 
 - **save** → uma classe em `systems/` que serializa um dicionário; o roteador a chama no `_ready`.
 - **áudio** → um nó montado uma vez no `main.gd`, com os nomes de som vindo de um CSV.
-- **combate** → `systems/combat/`, regra pura, testável sem janela; a tela só desenha o resultado.
+- **grupo em vez de 1x1** → `Battle` passa a receber dois arrays, e `Unit.first_of_side` vira a
+  escalação. A tela desenha mais bonecos; nada mais muda de lugar.
+- **mais de um cenário** → a constante `BACKDROP` da tela de batalha vira coluna numa tabela de
+  fases, junto com o inimigo que mora em cada uma.
 
 A regra para crescer é a mesma que vale aqui: a decisão nova vai num arquivo, com o motivo escrito
 ao lado dela, e um portão que a verifique.
@@ -212,6 +248,17 @@ Quando um comentário aqui soa exagerado, ele normalmente está descrevendo um b
 
 ---
 
+## Arte
+
+As folhas de sprite (`art/characters/`) e o cenário (`art/scenery/`) vêm do nosso projeto e estão
+aqui como demonstração. O cenário é um recorte em paisagem do original, que é retrato.
+
+A animação parada é um spritesheet de quatro quadros de 256×256 numa tira de 1024×256, tocada com
+um acumulador e um resto — sem `AnimationPlayer` e sem `SpriteFrames`. Para quatro quadros, o
+resto é cerimônia; veja `_animate()` em `run/battle_screen.gd`.
+
+---
+
 ## Licença
 
-Apache 2.0 — veja `LICENSE`. Use, copie, mude, publique.
+Apache 2.0 — veja `LICENSE`. A arte é do nosso projeto; o código, use à vontade.

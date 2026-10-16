@@ -7,6 +7,7 @@
 class_name HomeScreen
 extends Screen
 
+signal battle_requested
 signal roster_requested
 
 var _play: Button
@@ -16,10 +17,13 @@ var _hint: Label
 
 func setup(with_tokens: Tokens) -> void:
 	dress(with_tokens, "GODOT STARTER", false)
+	# O mesmo arquivo da batalha, com o veu mais fechado: aqui o que importa e ler os botoes, e
+	# nao o cenario.
+	set_backdrop(BattleScreen.BACKDROP, 0.6)
 	set_subtitle("o minimo que ja e uma arquitetura")
 
-	_play = Chrome.button(tokens, "jogar (ainda nao faz nada)")
-	_play.disabled = true
+	_play = Chrome.button(tokens, "iniciar batalha")
+	_play.pressed.connect(func() -> void: battle_requested.emit())
 	add_child(_play)
 
 	_roster = Chrome.button(tokens, "ver as unidades")

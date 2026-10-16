@@ -13,9 +13,15 @@ RES   ?= 1152x648
 # cita uma classe de outro arquivo. O primeiro `make check` de quem clonou falhava com trinta
 # "Could not find type", e a causa nao era o codigo: era a pasta ausente.
 #
-# Entao o cache virou um alvo, e nao um recado no README. Ele e gerado na primeira vez que
-# alguem precisa dele, e depois disso ninguem pensa nisso de novo.
-CACHE := game/.godot/global_script_class_cache.cfg
+# O MESMO ERRO VOLTA AO SE CRIAR UMA CLASSE NOVA, porque o cache e escrito pelo editor e quem
+# trabalha pelo terminal nunca o abre: `class_name Battle` existia em disco e o portao jurava
+# que nao. Por isso o cache depende dos PROPRIOS SCRIPTS -- qualquer .gd mais novo que ele
+# manda reimportar. Custa dois segundos e apaga uma classe inteira de erro mentiroso.
+#
+# Em ambos os casos o conserto e um alvo, e nao um recado no README: recado e passo manual, e
+# passo manual e passo esquecido.
+CACHE   := game/.godot/global_script_class_cache.cfg
+SCRIPTS := $(shell find game -name '*.gd' -not -path 'game/addons/*')
 
 .DEFAULT_GOAL := help
 .PHONY: help run editor check parse data test import clean doctor
@@ -85,8 +91,8 @@ import: | _godot
 # A primeira importacao, feita sozinha quando falta. `|| true` porque o import imprime avisos
 # e sai diferente de zero por motivos que nao impedem nada -- o que decide e o arquivo existir,
 # e e isso que a linha seguinte verifica.
-$(CACHE): | _godot
-	@echo "==> primeira vez neste clone: importando"
+$(CACHE): $(SCRIPTS) | _godot
+	@echo "==> o cache de classes esta desatualizado: importando"
 	@$(GODOT) --headless --path game --import >/dev/null 2>&1 || true
 	@test -f $@ || { echo "o import nao gerou o cache de classes -- rode 'make import'"; exit 2; }
 	@echo "    ok"
