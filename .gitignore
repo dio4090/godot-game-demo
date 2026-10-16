@@ -1,0 +1,9 @@
+# O cache de import do Godot: derivado, grande e por maquina.
+.godot/
+# Saida dos portoes.
+build/
+# macOS
+.DS_Store
+# Se um CSV novo entrar sem o seu .import marcado como "keep", o Godot o importa como
+# arquivo de traducao e cospe um .translation por coluna. Veja data/*.csv.import.
+*.translation

@@ -1,0 +1,13 @@
+file,column,type,range,required,derivation,formula
+01-units.csv,id,id,,yes,o endereco da linha -- um id que nomeia duas linhas nao e um endereco,
+01-units.csv,name,text,,yes,o nome que o jogador le,
+01-units.csv,role,enum,tank | damage | support,yes,a funcao da unidade no grupo,
+01-units.csv,hp,integer,1..99999,yes,vida base,
+01-units.csv,attack,decimal,0.1..9999.0,yes,dano por golpe,
+01-units.csv,attacks_per_s,decimal,0.05..10.0,yes,velocidade de ataque,
+01-units.csv,dps,computed,,no,dano por segundo -- NAO existe no CSV; e calculado ao carregar,attack * attacks_per_s
+01-units.csv,note,text,,no,por que este numero e este numero,
+02-palette.csv,token,id,,yes,o nome pelo qual o codigo pede a cor,
+02-palette.csv,hex,text,,yes,seis digitos sem o '#',
+02-palette.csv,role,enum,surface | text | accent,yes,para que serve a cor,
+02-palette.csv,note,text,,no,,

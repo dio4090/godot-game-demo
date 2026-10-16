@@ -1,0 +1,9 @@
+token,hex,role,note
+bg_deep,151320,surface,"o fundo de tela inteira, atras de tudo"
+bg_panel,262340,surface,o corpo de um painel
+bg_raised,3C3766,surface,"uma face que sobe um degrau sobre o painel -- e isso que a faz parecer botao"
+ink,0B0A12,surface,"o preto do contorno e da sombra"
+text,F2EFFF,text,o branco de todo texto corrido
+text_dim,9A93C0,text,texto secundario
+gold,F5C542,accent,"o titulo e o numero que importa"
+danger,E2566A,accent,dano e aviso

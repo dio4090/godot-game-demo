@@ -1,0 +1,38 @@
+; Esqueleto minimo. Cada bloco abaixo existe por um motivo, e o motivo esta escrito.
+; O que o editor gerencia (uids, imports) nao se edita a mao.
+
+config_version=5
+
+[application]
+
+config/name="Godot Starter"
+config/description="Esqueleto minimo: numero em CSV, tela em codigo, portao que verifica."
+; A versao e lida pelo jogo em tempo de execucao. Se um dia houver export, ela aparece
+; tambem no export_presets.cfg -- e as duas sobem juntas.
+config/version="0.1.0"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+run/main_scene="res://run/main.tscn"
+
+[display]
+
+; Uma resolucao de projeto, e tudo e medido contra ela. "canvas_items" + "expand" deixa a
+; janela crescer sem esticar a arte: o canvas ganha area, nao ganha distorcao.
+window/size/viewport_width=1152
+window/size/viewport_height=648
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+; Sem isto o macOS desenha num tamanho em PONTOS e amplia 2x por cima -- reducao fracionaria
+; seguida de ampliacao inteira, que e o pior caso possivel para qualquer arte.
+window/dpi/allow_hidpi=true
+
+[rendering]
+
+; 1 = linear. Troque para 0 (nearest) se o jogo for pixel art: interpolar um pixel e perder
+; o estilo. Esta linha e uma decisao de direcao de arte, nao um padrao.
+textures/canvas_textures/default_texture_filter=1
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gut/plugin.cfg")

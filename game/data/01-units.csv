@@ -1,0 +1,4 @@
+id,name,role,hp,attack,attacks_per_s,note
+knight,Knight,tank,420,12.0,0.8,"aguenta o primeiro golpe; dps baixo de proposito"
+archer,Archer,damage,180,9.5,1.9,"o dps mais alto da lista, e a vida mais baixa"
+cleric,Cleric,support,240,5.0,0.9,"nao e por dano que ela entra no grupo"
