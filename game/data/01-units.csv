@@ -1,5 +1,5 @@
-id,name,role,side,hp,attack,attacks_per_s,sprite,note
-knight,Knight,tank,hero,420,12.0,0.8,res://art/characters/hero_idle.png,"aguenta o primeiro golpe; dps baixo de proposito"
-archer,Archer,damage,hero,180,9.5,1.9,-,"o dps mais alto da lista, e a vida mais baixa"
-cleric,Cleric,support,hero,240,5.0,0.9,-,"nao e por dano que ela entra no grupo"
-crawler,Marsh Crawler,damage,enemy,80,14.0,0.9,res://art/characters/enemy_idle.png,"vida curta e golpe duro: a batalha de exemplo tem de caber em ~8 segundos e ainda assustar"
+id,name,role,side,hp,attack,attacks_per_s,sprite,sprite_attack,note
+knight,Knight,tank,hero,420,12.0,0.8,res://art/characters/hero_idle.png,res://art/characters/hero_attack.png,"aguenta o primeiro golpe; dps baixo de proposito"
+archer,Archer,damage,hero,180,9.5,1.9,-,-,"o dps mais alto da lista, e a vida mais baixa"
+cleric,Cleric,support,hero,240,5.0,0.9,-,-,"nao e por dano que ela entra no grupo"
+crawler,Marsh Crawler,damage,enemy,80,14.0,0.9,res://art/characters/enemy_idle.png,res://art/characters/enemy_attack.png,"vida curta e golpe duro: a batalha de exemplo tem de caber em ~8 segundos e ainda assustar"

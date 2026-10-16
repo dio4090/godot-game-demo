@@ -4,6 +4,11 @@
 # chama `advance(delta)`, le `hero_fraction()` e desenha. Se voce procurar aqui um numero de
 # dano ou uma condicao de vitoria, nao vai achar -- e esse e o ponto.
 #
+# TUDO QUE ESTA AQUI E APARENCIA: a folha de sprite que esta tocando, o passo a frente do
+# golpe, o vermelho de quem apanhou. Nada disso altera a luta. A prova e direta -- apague este
+# arquivo inteiro e `tests/test_battle.gd` continua passando, com o mesmo vencedor e o mesmo
+# tempo.
+#
 # E quando acaba, ela NAO navega: emite `ended` e fica parada. Quem decide o que vem depois de
 # uma vitoria e `run/main.gd`.
 class_name BattleScreen
@@ -20,32 +25,115 @@ signal ended(hero_won: bool)
 ## la, uma tabela de uma linha so seria cerimonia.
 const BACKDROP := "res://art/scenery/arena.png"
 
-## Quanto tempo o alvo fica vermelho depois de apanhar.
-const FLASH := 0.12
-## Segundos por quadro da animacao parada. Quatro quadros numa folha de 1024x256.
-const FRAME_TIME := 0.15
-const FRAMES := 4
 
-
-## Um lado da tela: o boneco, o nome e a barra. Classe interna porque nada fora deste arquivo
-## precisa dela -- e uma peca que dois lugares usassem viraria um arquivo em `common/`.
+## Um lado da tela: o boneco, o nome e a barra -- e tudo que o boneco faz enquanto a regra
+## resolve a luta em outro arquivo.
+##
+## Classe interna porque nada fora daqui precisa dela. Uma peca que dois lugares usassem viraria
+## um arquivo em `common/`; uma que so um usa e ruido se virar arquivo.
 class Fighter:
+	## Quatro quadros numa tira de 1024x256, nas duas folhas.
+	const FRAMES := 4
+	## Segundos por quadro da animacao parada.
+	const IDLE_FRAME := 0.15
+	## Quanto dura o golpe inteiro: a folha de ataque toca uma vez e o passo vai e volta.
+	##
+	## Tem de caber FOLGADO no intervalo entre dois golpes do lutador mais rapido, senao a
+	## animacao ainda estaria correndo quando a proxima comeca e o boneco nunca voltaria ao
+	## lugar. O mais rapido desta demo bate a cada 1,1 s; isto e um terco disso.
+	const STRIKE := 0.36
+	## Quantos pixels o lutador avanca na investida. Uma fracao curta da distancia entre os
+	## dois: ele AMEACA o outro, nao chega nele -- dois bonecos que se encostam viram um borrao.
+	const LUNGE := 120.0
+	## Quanto tempo o alvo fica vermelho depois de apanhar.
+	const FLASH := 0.12
+	## A cor do golpe, e ela PASSA DE 1 nos tres canais de proposito.
+	##
+	## `modulate` MULTIPLICA a textura. Um vermelho "normal" como (1, 0.4, 0.45) escurece tudo
+	## que nao e vermelho -- o bicho verde-azulado virava uma silhueta preta, que o olho le como
+	## sombra e nao como dor. Multiplicar por mais de 1 estoura o canal e CLAREIA: o alvo fica
+	## lavado de vermelho claro, que e o que uma pancada parece.
+	const FLASH_TINT := Color(2.2, 0.9, 0.95)
+
 	var root: Control
 	var sprite: Sprite2D
 	var name_label: Label
 	var bar: ProgressBar
 	var hp_label: Label
-	var flash: float = 0.0
 
+	var idle_sheet: Texture2D
+	## Pode ser `null`: o schema deixa `sprite_attack` ausente, e entao o golpe e so o passo a
+	## frente com a folha parada. Ausencia tratada, e nao presumida.
+	var attack_sheet: Texture2D
+
+	## Para que lado este lutador avanca: +1 direita, -1 esquerda.
+	##
+	## ELE DECIDE O ESPELHAMENTO TAMBEM, e e por isso que e um numero e nao um booleano. A arte
+	## deste projeto e desenhada OLHANDO PARA A DIREITA -- o cavaleiro estoca para a direita, a
+	## garra do bicho se estende para a direita. Quem luta da direita da tela precisa olhar para
+	## a esquerda, e e o mesmo fato: avanca para a esquerda, logo esta espelhado. Antes disto o
+	## inimigo lutava de costas para o heroi.
+	var facing: float = 1.0
+	## Onde o boneco fica quando nao esta golpeando. Definido pelo layout, nao pela animacao.
+	var home: Vector2 = Vector2.ZERO
+
+	var _idle_time: float = 0.0
+	var _strike_left: float = 0.0
+	var _flash_left: float = 0.0
+	## Quanto falta ate o vermelho COMECAR. Veja `hit`.
+	var _flash_wait: float = 0.0
+
+	## O lutador golpeou AGORA. A regra ja aplicou o dano; isto e so o corpo acompanhando.
+	func strike() -> void:
+		_strike_left = STRIKE
+
+	## O lutador apanhou. O vermelho nao comeca agora: comeca no AUGE da investida de quem
+	## bateu, que e meio golpe depois.
+	##
+	## A regra resolve o dano num instante -- `advance` devolve o golpe e a vida ja caiu. A
+	## animacao leva 0,36 s para contar a mesma coisa, e piscar no instante zero fazia o alvo
+	## reagir enquanto o atacante ainda estava saindo do lugar: dois bonecos a meia tela de
+	## distancia, um deles ja com dor. O olho le isso como erro mesmo sem saber nomear.
 	func hit() -> void:
-		flash = FLASH
+		_flash_wait = STRIKE * 0.5
 
-	## Devolve a cor que o boneco deve ter agora. A tela aplica; o lutador so conta o tempo.
-	func fade(delta: float) -> void:
-		if flash <= 0.0:
+	## Volta ao estado de quem ainda nao lutou.
+	func reset() -> void:
+		_strike_left = 0.0
+		_flash_left = 0.0
+		_flash_wait = 0.0
+		sprite.modulate = Color.WHITE
+		sprite.texture = idle_sheet
+		sprite.position = home
+
+	## Um quadro de animacao. Tudo que muda de aparencia passa por aqui, entao nao ha dois
+	## lugares decidindo onde o boneco esta.
+	func tick(delta: float) -> void:
+		sprite.flip_h = facing < 0.0
+		if _flash_wait > 0.0:
+			_flash_wait = maxf(0.0, _flash_wait - delta)
+			if _flash_wait == 0.0:
+				_flash_left = FLASH
+		_flash_left = maxf(0.0, _flash_left - delta)
+		sprite.modulate = Color.WHITE.lerp(FLASH_TINT, _flash_left / FLASH)
+
+		if _strike_left > 0.0:
+			_strike_left = maxf(0.0, _strike_left - delta)
+			# `t` vai de 0 (comeco do golpe) a 1 (fim), e os dois usos abaixo saem dele -- um
+			# relogio so para a folha e para o passo, que e o que os mantem juntos.
+			var t: float = 1.0 - _strike_left / STRIKE
+			if attack_sheet != null:
+				sprite.texture = attack_sheet
+			sprite.frame = clampi(int(t * FRAMES), 0, FRAMES - 1)
+			# sin(PI*t) vale 0 nas pontas e 1 no meio: sai, chega no auge do golpe e volta --
+			# uma expressao no lugar de uma maquina de estados de ida e de volta.
+			sprite.position = home + Vector2(facing * LUNGE * sin(PI * t), 0.0)
 			return
-		flash = maxf(0.0, flash - delta)
-		sprite.modulate = Color.WHITE.lerp(Color(1.0, 0.4, 0.45), flash / FLASH)
+
+		sprite.texture = idle_sheet
+		sprite.position = home
+		_idle_time += delta
+		sprite.frame = int(_idle_time / IDLE_FRAME) % FRAMES
 
 
 var _battle: Battle
@@ -53,7 +141,6 @@ var _hero: Fighter
 var _enemy: Fighter
 var _verdict: Label
 var _clock: Label
-var _frame_time: float = 0.0
 var _hero_unit: Unit
 var _enemy_unit: Unit
 
@@ -65,7 +152,9 @@ func setup(with_tokens: Tokens, tables: DataTables) -> void:
 	_enemy_unit = Unit.first_of_side(tables, "enemy")
 
 	_hero = _build_fighter(_hero_unit)
+	_hero.facing = 1.0
 	_enemy = _build_fighter(_enemy_unit)
+	_enemy.facing = -1.0
 
 	_clock = Label.new()
 	_clock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -86,34 +175,53 @@ func setup(with_tokens: Tokens, tables: DataTables) -> void:
 func start() -> void:
 	_battle = Battle.new(_hero_unit, _enemy_unit)
 	_verdict.visible = false
-	_hero.sprite.modulate = Color.WHITE
-	_enemy.sprite.modulate = Color.WHITE
+	_hero.reset()
+	_enemy.reset()
 	_refresh()
 	set_process(true)
 
 
 func _process(delta: float) -> void:
-	if _battle == null or _battle.is_over():
-		return  # terminada: nada anima, e o esmaecido do perdedor fica como esta
-	_animate(delta)
-	_hero.fade(delta)
-	_enemy.fade(delta)
+	if _battle == null:
+		return
+	_hero.tick(delta)
+	_enemy.tick(delta)
+	if _battle.is_over():
+		return
 
+	# UM GOLPE DA REGRA VIRA DUAS ANIMACOES: quem bateu avanca, quem apanhou pisca. A tela nao
+	# sabe quanto doeu e nao precisa saber.
 	for blow in _battle.advance(delta):
-		(_hero if blow.target_is_hero else _enemy).hit()
+		if blow.target_is_hero:
+			_enemy.strike()
+			_hero.hit()
+		else:
+			_hero.strike()
+			_enemy.hit()
 	_refresh()
 
 	if _battle.is_over():
-		set_process(false)
-		_verdict.text = "VITÓRIA" if _battle.hero_won() else "DERROTA"
-		_verdict.visible = true
-		# QUEM CAIU TEM DE PARECER CAIDO. Sem isto os dois continuam em pe, piscando a mesma
-		# animacao parada, e a tela depende do texto para dizer o que o desenho ja deveria.
-		var loser: Fighter = _enemy if _battle.hero_won() else _hero
-		loser.sprite.modulate = Color(0.45, 0.45, 0.5, 0.55)
-		# A TELA AVISA E PARA. Ela nao abre a proxima coisa, nao soma recompensa e nao salva
-		# nada -- quem faz isso e quem escutar este sinal.
-		ended.emit(_battle.hero_won())
+		_finish()
+
+
+func _finish() -> void:
+	var won := _battle.hero_won()
+	_verdict.text = "VITÓRIA" if won else "DERROTA"
+	_verdict.visible = true
+
+	# O VENCEDOR VOLTA PARA O LUGAR. Sem isto ele congela no meio da investida, no quadro em que
+	# estava quando o outro caiu -- de espada no ar e fora do proprio pe.
+	var winner: Fighter = _hero if won else _enemy
+	var loser: Fighter = _enemy if won else _hero
+	winner.reset()
+	# E QUEM CAIU TEM DE PARECER CAIDO. Sem isto os dois continuam em pe piscando a mesma
+	# animacao, e a tela depende do texto para dizer o que o desenho ja deveria.
+	loser.sprite.modulate = Color(0.45, 0.45, 0.5, 0.55)
+
+	set_process(false)
+	# A TELA AVISA E PARA. Ela nao abre a proxima coisa, nao soma recompensa e nao salva nada --
+	# quem faz isso e quem escutar este sinal.
+	ended.emit(won)
 
 
 func _build_fighter(unit: Unit) -> Fighter:
@@ -124,11 +232,10 @@ func _build_fighter(unit: Unit) -> Fighter:
 	add_child(f.root)
 
 	f.sprite = Sprite2D.new()
-	# AUSENCIA TRATADA, e nao assumida: `sprite` e coluna opcional no schema, entao uma unidade
-	# sem folha desenha so a barra em vez de derrubar a tela.
-	if unit.sprite != "" and ResourceLoader.exists(unit.sprite):
-		f.sprite.texture = load(unit.sprite)
-		f.sprite.hframes = FRAMES
+	f.idle_sheet = _sheet(unit.sprite)
+	f.attack_sheet = _sheet(unit.sprite_attack)
+	f.sprite.texture = f.idle_sheet
+	f.sprite.hframes = Fighter.FRAMES
 	f.root.add_child(f.sprite)
 
 	f.name_label = Label.new()
@@ -142,8 +249,7 @@ func _build_fighter(unit: Unit) -> Fighter:
 	f.bar.value = 1.0
 	f.bar.show_percentage = false
 	f.bar.add_theme_stylebox_override("background", Chrome.panel(tokens, "ink"))
-	var fill := Chrome.panel(tokens, "danger")
-	f.bar.add_theme_stylebox_override("fill", fill)
+	f.bar.add_theme_stylebox_override("fill", Chrome.panel(tokens, "danger"))
 	f.root.add_child(f.bar)
 
 	f.hp_label = Label.new()
@@ -153,13 +259,16 @@ func _build_fighter(unit: Unit) -> Fighter:
 	return f
 
 
-## Um acumulador e um resto: quatro quadros em loop, sem AnimationPlayer e sem SpriteFrames.
-## Para uma animacao parada de quatro quadros, qualquer coisa alem disto e cerimonia.
-func _animate(delta: float) -> void:
-	_frame_time += delta
-	var frame := int(_frame_time / FRAME_TIME) % FRAMES
-	_hero.sprite.frame = frame
-	_enemy.sprite.frame = frame
+## AUSENCIA TRATADA, E NAO ASSUMIDA: `sprite` e `sprite_attack` sao colunas opcionais, entao
+## uma unidade sem folha desenha so a barra em vez de derrubar a tela. Um caminho PREENCHIDO e
+## inexistente e outra coisa -- esse e erro, e grita.
+func _sheet(path: String) -> Texture2D:
+	if path == "":
+		return null
+	if not ResourceLoader.exists(path):
+		push_error("batalha: a folha %s nao existe" % [path])
+		return null
+	return load(path)
 
 
 func _refresh() -> void:
@@ -181,7 +290,7 @@ func _place_body() -> void:
 	_place_fighter(_enemy, Rect2(
 		Vector2(area.position.x + half, area.position.y), Vector2(half, area.size.y)))
 
-	_clock.position = Vector2(area.position.x, area.position.y)
+	_clock.position = area.position
 	_clock.size = Vector2(area.size.x, 24.0)
 	_verdict.position = Vector2(area.position.x, area.position.y + area.size.y / 2.0 - 40.0)
 	_verdict.size = Vector2(area.size.x, 80.0)
@@ -197,7 +306,11 @@ func _place_fighter(f: Fighter, slot: Rect2) -> void:
 	f.name_label.size = Vector2(inner, 36.0)
 	# O Sprite2D desenha a partir do CENTRO, e nao do canto como um Control -- por isso a
 	# metade aqui. Trocar os dois e o bug de layout mais comum de quem mistura 2D com UI.
-	f.sprite.position = Vector2(slot.size.x / 2.0, slot.size.y / 2.0)
+	#
+	# E o layout define `home`, nao a posicao: a animacao MEXE na posicao a cada quadro, entao
+	# quem a escrevesse aqui estaria discutindo com ela. O lugar de voltar e um dado.
+	f.home = Vector2(slot.size.x / 2.0, slot.size.y / 2.0)
+	f.sprite.position = f.home
 	f.bar.position = Vector2(x, slot.size.y - 90.0)
 	f.bar.size = Vector2(inner, 28.0)
 	f.hp_label.position = Vector2(x, slot.size.y - 56.0)

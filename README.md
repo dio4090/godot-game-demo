@@ -162,6 +162,28 @@ várias vezes, em milissegundos e sem abrir janela. Um deles verifica até o **c
 alguém triplicar a vida do inimigo no CSV, o teste falha dizendo que a batalha de exemplo deixou
 de caber numa demonstração.
 
+A prova de que a fronteira é real: **apague `run/battle_screen.gd` inteiro e os testes continuam
+passando**, com o mesmo vencedor e o mesmo tempo.
+
+### O que a tela faz com um golpe
+
+A regra devolve um golpe e segue. A tela transforma isso em três coisas, nenhuma das quais altera
+a luta:
+
+- **a folha de ataque** toca uma vez, quatro quadros em 0,36 s;
+- **a investida** leva o lutador 120 px na direção do outro e o traz de volta — é `sin(PI * t)`,
+  que vale 0 nas pontas e 1 no meio, em vez de uma máquina de estados de ida e de volta;
+- **o alvo pisca**, e não no instante do golpe: meio golpe depois, quando o atacante chega ao
+  auge. Piscar no instante zero fazia o alvo sentir dor com o atacante ainda a meia tela de
+  distância, e o olho lê isso como erro mesmo sem saber nomear.
+
+Duas coisas que valem para qualquer jogo 2D e estão comentadas no código. A primeira: `modulate`
+**multiplica** a textura, então um vermelho normal escurece tudo que não é vermelho — o bicho
+virava silhueta preta, que se lê como sombra. A cor do golpe passa de 1 nos três canais, o que
+estoura o canal e clareia. A segunda: a arte aqui é desenhada **olhando para a direita**, então
+quem luta do lado direito é espelhado — e é o mesmo dado que decide para onde ele avança, um
+número só (`facing`) em vez de dois campos que podem discordar.
+
 Detalhes do combate que estão comentados no código, cada um porque é uma decisão e não um acaso:
 o primeiro golpe não sai no instante zero; os dois golpes do mesmo passo acontecem mesmo que o
 primeiro mate (senão o vencedor dependeria da ordem das linhas do arquivo); um passo grande é
@@ -251,11 +273,17 @@ Quando um comentário aqui soa exagerado, ele normalmente está descrevendo um b
 ## Arte
 
 As folhas de sprite (`art/characters/`) e o cenário (`art/scenery/`) vêm do nosso projeto e estão
-aqui como demonstração. O cenário é um recorte em paisagem do original, que é retrato.
+aqui como demonstração. São quatro folhas — parado e ataque, para cada lado — e um recorte em
+paisagem da arena, que no original é retrato.
 
-A animação parada é um spritesheet de quatro quadros de 256×256 numa tira de 1024×256, tocada com
-um acumulador e um resto — sem `AnimationPlayer` e sem `SpriteFrames`. Para quatro quadros, o
-resto é cerimônia; veja `_animate()` em `run/battle_screen.gd`.
+Cada folha é de quatro quadros de 256×256 numa tira de 1024×256, tocada com um acumulador e um
+resto, sem `AnimationPlayer` e sem `SpriteFrames`. Para quatro quadros, o resto é cerimônia; veja
+`Fighter.tick()` em `run/battle_screen.gd`, que é o único lugar onde a aparência de um lutador
+muda — folha, quadro, posição e cor saem todos de lá, então não há dois pedaços de código
+discutindo onde o boneco está.
+
+Os caminhos das folhas estão em `01-units.csv`, e `sprite_attack` é opcional: quem não tem folha
+de ataque golpeia com a folha parada.
 
 ---
 

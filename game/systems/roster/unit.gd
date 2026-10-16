@@ -19,6 +19,8 @@ var attacks_per_s: float
 ## O caminho da folha de sprites, ou "" quando a unidade nao aparece em batalha. E so um
 ## texto aqui: quem carrega a imagem e a tela, porque `systems/` nao abre arquivo.
 var sprite: String
+## A folha do golpe, ou "" -- e a ausencia tem um significado util: golpeia com a folha parada.
+var sprite_attack: String
 ## Veio do schema como coluna CALCULADA (`attack * attacks_per_s`), entao nao esta no CSV.
 var dps: float
 
@@ -35,6 +37,7 @@ static func from_row(row: Dictionary) -> Unit:
 	unit.attack = float(row.get("attack", 0.0))
 	unit.attacks_per_s = float(row.get("attacks_per_s", 0.0))
 	unit.sprite = str(row.get("sprite", ""))
+	unit.sprite_attack = str(row.get("sprite_attack", ""))
 	unit.dps = float(row.get("dps", 0.0))
 	return unit
 
