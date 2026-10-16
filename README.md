@@ -10,7 +10,8 @@ make check    # os três portões (rode antes de cada commit)
 make          # lista tudo que dá para fazer
 ```
 
-Precisa de `godot` no PATH (`brew install godot`) e nada mais.
+Precisa de `godot` no PATH (`brew install godot`) e nada mais. Na primeira vez o `make`
+importa o projeto sozinho — a pasta `.godot/` é derivada e não vem no repositório.
 
 ---
 

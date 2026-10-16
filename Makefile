@@ -6,6 +6,17 @@
 GODOT ?= godot
 RES   ?= 1152x648
 
+# O CACHE DE CLASSES, e ele e a razao de metade deste arquivo ter `| $(CACHE)` na frente.
+#
+# Num clone limpo a pasta `.godot/` nao existe -- ela e derivada e esta no .gitignore. Sem ela
+# o Godot nao sabe que `class_name Tokens` existe, e `--check-only` reprova TODO script que
+# cita uma classe de outro arquivo. O primeiro `make check` de quem clonou falhava com trinta
+# "Could not find type", e a causa nao era o codigo: era a pasta ausente.
+#
+# Entao o cache virou um alvo, e nao um recado no README. Ele e gerado na primeira vez que
+# alguem precisa dele, e depois disso ninguem pensa nisso de novo.
+CACHE := game/.godot/global_script_class_cache.cfg
+
 .DEFAULT_GOAL := help
 .PHONY: help run editor check parse data test import clean doctor
 
@@ -28,10 +39,10 @@ help:
 
 # --- jogar -------------------------------------------------------------------------------
 
-run: | _godot
+run: | _godot $(CACHE)
 	$(GODOT) --path game --resolution $(RES)
 
-editor: | _godot
+editor: | _godot $(CACHE)
 	$(GODOT) --path game
 
 # --- verificar ---------------------------------------------------------------------------
@@ -42,11 +53,11 @@ check: parse data test
 	@echo ""
 	@echo "  ok, os portoes passaram"
 
-parse: | _godot
+parse: | _godot $(CACHE)
 	@echo "==> todo GDScript compila"
 	@sh tools/check_scripts.sh && echo "    ok"
 
-data: | _godot
+data: | _godot $(CACHE)
 	@echo "==> os CSVs batem com o schema"
 	@$(GODOT) --headless --path game -s dev/validate_data.gd 2>&1 \
 		| sed 's/\x1b\[[0-9;]*m//g' | tail -2
@@ -54,7 +65,7 @@ data: | _godot
 # O PIPE COME O STATUS: num pipe, o codigo de saida e o do ULTIMO comando. Sem o `status=$$?`
 # guardado antes do `sed`, este alvo imprimiria "os portoes passaram" com testes falhando --
 # e um portao que relata sem barrar e pior que portao nenhum, porque ensina a confiar nele.
-test: | _godot
+test: | _godot $(CACHE)
 	@echo "==> suite"
 	@mkdir -p build
 	@sh tools/run_tests.sh > build/test.log 2>&1; status=$$?; \
@@ -69,6 +80,15 @@ test: | _godot
 import: | _godot
 	@echo "==> reimportando assets"
 	@$(GODOT) --headless --path game --import >/dev/null 2>&1 || true
+	@echo "    ok"
+
+# A primeira importacao, feita sozinha quando falta. `|| true` porque o import imprime avisos
+# e sai diferente de zero por motivos que nao impedem nada -- o que decide e o arquivo existir,
+# e e isso que a linha seguinte verifica.
+$(CACHE): | _godot
+	@echo "==> primeira vez neste clone: importando"
+	@$(GODOT) --headless --path game --import >/dev/null 2>&1 || true
+	@test -f $@ || { echo "o import nao gerou o cache de classes -- rode 'make import'"; exit 2; }
 	@echo "    ok"
 
 clean:
